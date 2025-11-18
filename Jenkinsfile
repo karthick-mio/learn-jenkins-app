@@ -24,6 +24,8 @@ pipeline {
                     npm run build
                     ls -la
                 '''
+                // save build output
+                stash includes: 'build/**', name: 'web-build'
             }
         }
 
@@ -36,10 +38,12 @@ pipeline {
                             reuseNode true
                         }
                     }
-
                     steps {
+                        // restore build so tests can find it if needed
+                        unstash 'web-build'
+
                         sh '''
-                            #test -f build/index.html
+                            npm ci
                             npm test
                         '''
                     }
@@ -57,8 +61,9 @@ pipeline {
                             reuseNode true
                         }
                     }
-
                     steps {
+                        unstash 'web-build'
+
                         sh '''
                             npm install serve
                             node_modules/.bin/serve -s build &
@@ -66,7 +71,6 @@ pipeline {
                             npx playwright test  --reporter=html
                         '''
                     }
-
                     post {
                         always {
                             publishHTML([allowMissing: false, alwaysLinkToLastBuild: false, keepAll: false, reportDir: 'playwright-report', reportFiles: 'index.html', reportName: 'Playwright HTML Report', reportTitles: '', useWrapperFileDirectly: true])
@@ -84,6 +88,9 @@ pipeline {
                 }
             }
             steps {
+                // restore build folder
+                unstash 'web-build'
+
                 sh '''
                     npm install netlify-cli
                     node_modules/.bin/netlify --version
