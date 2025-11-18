@@ -3,7 +3,7 @@ pipeline {
 
     environment {
         NETLIFY_SITE_ID = '9fa963c0-46ff-46a1-a7ea-480c5bb1c8e2'
-        NETLIFY_AUTH_TOKEN = credentials('netify_token')
+        NETLIFY_AUTH_TOKEN = credentials('netify-token')
     }
 
     stages {
@@ -24,8 +24,6 @@ pipeline {
                     npm run build
                     ls -la
                 '''
-                // save build output
-                stash includes: 'build/**', name: 'web-build'
             }
         }
 
@@ -38,12 +36,10 @@ pipeline {
                             reuseNode true
                         }
                     }
-                    steps {
-                        // restore build so tests can find it if needed
-                        unstash 'web-build'
 
+                    steps {
                         sh '''
-                            npm ci
+                            #test -f build/index.html
                             npm test
                         '''
                     }
@@ -61,9 +57,8 @@ pipeline {
                             reuseNode true
                         }
                     }
-                    steps {
-                        unstash 'web-build'
 
+                    steps {
                         sh '''
                             npm install serve
                             node_modules/.bin/serve -s build &
@@ -71,6 +66,7 @@ pipeline {
                             npx playwright test  --reporter=html
                         '''
                     }
+
                     post {
                         always {
                             publishHTML([allowMissing: false, alwaysLinkToLastBuild: false, keepAll: false, reportDir: 'playwright-report', reportFiles: 'index.html', reportName: 'Playwright HTML Report', reportTitles: '', useWrapperFileDirectly: true])
@@ -88,9 +84,6 @@ pipeline {
                 }
             }
             steps {
-                // restore build folder
-                unstash 'web-build'
-
                 sh '''
                     npm install netlify-cli
                     node_modules/.bin/netlify --version
